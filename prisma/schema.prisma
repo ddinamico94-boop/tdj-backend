@@ -1,0 +1,289 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Unidades ─────────────────────────
+
+model Unidad {
+  id           Int      @id @default(autoincrement())
+  numero       String   @unique // identificador estable, ej: "U-01"
+  titulo       String
+  descripcion  String   @default("")
+  introduccion String   @default("") // HTML del editor de contenido enriquecido
+  temas        String[] @default([])
+  publicada    Boolean  @default(true)
+  orden        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  materiales   MaterialUnidad[]
+  bibliografia RecursoBibliografico[]
+  preguntas    Pregunta[]
+  trivias      TriviaUnidad[]
+  eventos      EventoCalendario[]
+}
+
+// ───────────────────────── Programa (singleton) ─────────────────────────
+
+model Programa {
+  id             Int      @id @default(1)
+  titulo         String   @default("Programa de la materia")
+  presentacion   String   @default("")
+  objetivos      String[] @default([])
+  pdfUrl         String?
+  updatedAt      DateTime @updatedAt
+}
+
+// ───────────────────────── Bibliografía ─────────────────────────
+
+enum TipoBibliografia {
+  obligatoria
+  complementaria
+}
+
+model RecursoBibliografico {
+  id          String           @id @default(cuid())
+  tipo        TipoBibliografia
+  autor       String
+  titulo      String
+  editorial   String?
+  anio        String?
+  descripcion String?
+  tema        String?
+  imagenUrl   String?
+  pdfUrl      String?
+  linkExterno String?
+  orden       Int              @default(0)
+  unidadId    Int?
+  unidad      Unidad?          @relation(fields: [unidadId], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// ───────────────────────── Material de estudio ─────────────────────────
+
+enum TipoMaterial {
+  PDF
+  Video
+  Audio
+  Documento
+  Imagen
+  Link
+}
+
+model MaterialEstudio {
+  id          String           @id @default(cuid())
+  titulo      String
+  tipo        TipoMaterial
+  descripcion String?
+  archivoUrl  String?
+  orden       Int              @default(0)
+  unidades    MaterialUnidad[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+/// Tabla intermedia: un material puede pertenecer a varias unidades.
+model MaterialUnidad {
+  materialId String
+  unidadId   Int
+  material   MaterialEstudio @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  unidad     Unidad          @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+
+  @@id([materialId, unidadId])
+}
+
+// ───────────────────────── Enlaces / sitios importantes ─────────────────────────
+
+model EnlaceEditable {
+  id                  String   @id @default(cuid())
+  nombre              String
+  descripcion         String?
+  url                 String
+  logoUrl             String?
+  icono               String?
+  categoria           String?
+  orden               Int      @default(0)
+  activo              Boolean  @default(true)
+  abrirEnNuevaPestana Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ───────────────────────── Novedades ─────────────────────────
+
+model Novedad {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String
+  fecha       DateTime
+  imagenUrl   String?
+  archivoUrl  String?
+  link        String?
+  destacada   Boolean  @default(false)
+  publicada   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ───────────────────────── Banco de preguntas y trivias ─────────────────────────
+
+enum Dificultad {
+  facil
+  medio
+  dificil
+}
+
+model Pregunta {
+  id          String     @id @default(cuid())
+  pregunta    String
+  opciones    String[]
+  correcta    Int
+  explicacion String?
+  dificultad  Dificultad @default(medio)
+  imagenUrl   String?
+  unidadId    Int
+  unidad      Unidad     @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Trivia {
+  id                       String         @id @default(cuid())
+  nombre                   String
+  descripcion              String?
+  cantidadPreguntas        Int            @default(10)
+  dificultad               String         @default("mixta")
+  tiempoPorPreguntaSeg     Int            @default(20)
+  ordenAleatorio           Boolean        @default(true)
+  mostrarExplicacion       Boolean        @default(true)
+  mostrarRespuestaCorrecta Boolean        @default(true)
+  publicada                Boolean        @default(true)
+  unidades                 TriviaUnidad[]
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+}
+
+/// Selección manual de unidades participantes por trivia (punto 16 del brief).
+model TriviaUnidad {
+  triviaId String
+  unidadId Int
+  trivia   Trivia @relation(fields: [triviaId], references: [id], onDelete: Cascade)
+  unidad   Unidad @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+
+  @@id([triviaId, unidadId])
+}
+
+// ───────────────────────── Menú, footer, configuración ─────────────────────────
+
+model ItemMenu {
+  id      String  @id @default(cuid())
+  label   String
+  to      String
+  icono   String?
+  orden   Int     @default(0)
+  visible Boolean @default(true)
+}
+
+model SiteConfig {
+  id           Int      @id @default(1)
+  nombre       String   @default("")
+  bienvenida   String   @default("")
+  footerTexto  String   @default("")
+  updatedAt    DateTime @updatedAt
+
+  redesSociales RedSocial[]
+}
+
+enum PlataformaRed {
+  instagram
+  facebook
+  youtube
+  whatsapp
+  x
+  otra
+}
+
+model RedSocial {
+  id           String        @id @default(cuid())
+  plataforma   PlataformaRed
+  url          String
+  activo       Boolean       @default(false)
+  siteConfigId Int           @default(1)
+  siteConfig   SiteConfig    @relation(fields: [siteConfigId], references: [id], onDelete: Cascade)
+}
+
+model ConfiguracionVisual {
+  id              Int      @id @default(1)
+  logoUrl         String?
+  faviconUrl      String?
+  colorPrimario   String   @default("#1CDFE8")
+  colorSecundario String   @default("#FF8AD1")
+  tipografia      String?
+  updatedAt       DateTime @updatedAt
+}
+
+model ConfiguracionSEO {
+  id                 Int      @id @default(1)
+  nombreSitio        String   @default("")
+  tituloSEO          String   @default("")
+  descripcion        String   @default("")
+  imagenCompartirUrl String?
+  faviconUrl         String?
+  autor              String?
+  updatedAt          DateTime @updatedAt
+}
+
+// ───────────────────────── Administradores ─────────────────────────
+// Nota: password/roles finos y JWT se implementan en la Fase 5.
+// Por ahora el campo passwordHash existe para no tener que migrar
+// el esquema cuando se agregue el login real.
+
+enum RolAdmin {
+  superadmin
+  admin
+  editor
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String?
+  rol          RolAdmin @default(editor)
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ───────────────────────── Calendario académico ─────────────────────────
+// Punto 33 del brief ("Futuras funciones"): calendario, horarios, fechas
+// de parciales y recuperatorios.
+
+enum TipoEvento {
+  parcial
+  recuperatorio
+  clase
+  entrega
+  feriado
+  otro
+}
+
+model EventoCalendario {
+  id          String     @id @default(cuid())
+  titulo      String
+  descripcion String?
+  fecha       DateTime
+  fechaFin    DateTime?
+  tipo        TipoEvento @default(otro)
+  publicado   Boolean    @default(true)
+  unidadId    Int?
+  unidad      Unidad?    @relation(fields: [unidadId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}

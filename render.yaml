@@ -1,0 +1,43 @@
+# AVISO IMPORTANTE: el plan "free" de Render NO soporta discos persistentes
+# (el bloque "disk" de abajo requiere plan "Starter" o superior en el
+# servicio web). Con plan free, los archivos subidos en /uploads se pierden
+# cada vez que el servicio se reinicia o se redeploya (Render además
+# "duerme" los servicios free tras 15 min de inactividad). Para probar el
+# proyecto está bien así; antes de un uso real con la cátedra, conviene
+# subir el servicio web a un plan pago para que el disco persista. Ver
+# DEPLOY.md para más detalle.
+
+databases:
+  - name: tdj-db
+    databaseName: tdj_db
+    user: tdj
+    plan: free
+
+services:
+  - type: web
+    name: tdj-backend
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tdj-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: http://localhost:5173
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+    disk:
+      name: uploads
+      mountPath: /var/data/uploads
+      sizeGB: 1
