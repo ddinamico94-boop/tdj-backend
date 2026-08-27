@@ -16,8 +16,10 @@ export const calendarioRouter = crudRouter(prisma.eventoCalendario, {
       data.fechaFin = null;
     }
 
-    if (data.unidadId !== undefined && data.unidadId !== null) {
+    if (data.unidadId !== undefined && data.unidadId !== null && data.unidadId !== '' && data.unidadId !== 0) {
       data.unidadId = Number(data.unidadId);
+    } else {
+      data.unidadId = null;
     }
 
     return data;
