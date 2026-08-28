@@ -29,8 +29,7 @@ app.use(express.json({ limit: '10mb' })); // límite generoso por las imágenes 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 // Archivos subidos (imágenes, PDFs, videos, audios). Punto 33 del brief:
-// preparado para que en Render se agregue un disco persistente en UPLOADS_DIR.
-app.use('/uploads', express.static(UPLOADS_DIR));
+
 
 app.use('/api/auth', authRouter);
 app.use('/api/uploads', uploadsRouter);
