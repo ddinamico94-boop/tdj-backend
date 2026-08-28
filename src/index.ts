@@ -17,7 +17,7 @@ import { configSEORouter } from './routes/configSEO.routes';
 import { adminUsersRouter } from './routes/adminUsers.routes';
 import { authRouter } from './routes/auth.routes';
 import { uploadsRouter } from './routes/uploads.routes';
-import { UPLOADS_DIR } from './middleware/upload';
+
 import { calendarioRouter } from './routes/calendario.routes';
 
 const app = express();
