@@ -1,20 +1,9 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import crypto from 'crypto';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import cloudinary from '../config/cloudinary';
 
-// Almacenamiento en disco. En Render, agregar un disco persistente montado en UPLOADS_DIR
-// (por defecto "./uploads") para que los archivos sobrevivan a los
-// redeploys — el filesystem del contenedor sin volumen es efímero.
-export const UPLOADS_DIR = process.env.UPLOADS_DIR
-  ? path.resolve(process.env.UPLOADS_DIR)
-  : path.resolve(__dirname, '../../uploads');
-
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-// Tipos permitidos y tamaño máximo por categoría (punto 12/22/33 del
-// brief: PDFs, imágenes, videos, audios para material, bibliografía,
-// novedades, logos de enlaces, etc.)
+// Tipos permitidos y tamaño máximo por categoría (PDFs, imágenes, videos,
+// audios para material, bibliografía, novedades, logos de enlaces, etc.)
 const ALLOWED_MIME = [
   'image/png',
   'image/jpeg',
@@ -31,12 +20,23 @@ const ALLOWED_MIME = [
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const unique = crypto.randomBytes(12).toString('hex');
-    cb(null, `${Date.now()}-${unique}${ext}`);
+// Almacenamiento en Cloudinary (persistente entre redeploys, a diferencia
+// del disco local del contenedor en Render).
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (_req, file) => {
+    // 'raw' para PDFs/audio, 'video' para video, 'image' para el resto
+    let resource_type: 'image' | 'video' | 'raw' = 'image';
+    if (file.mimetype.startsWith('video/')) resource_type = 'video';
+    else if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('audio/')) {
+      resource_type = 'raw';
+    }
+    return {
+      folder: 'tdj-uploads',
+      resource_type,
+      // conserva el nombre original como referencia en public_id
+      public_id: `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, '')}`,
+    };
   },
 });
 
